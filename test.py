@@ -102,7 +102,7 @@ def F_score(src_file, dst_file):
                 if (int(x[2]) == int(y[2]) and abs(x[1] - y[1]) <= offset):
                     F_COnPOff[2] += 1
                     break
-                
+
 
 def predict(dir_path, idx):
     json_path = dir_path + "/Vocal.json"
@@ -129,7 +129,9 @@ def predict(dir_path, idx):
         predict_seg(i, seg_list, base_length, f)
 
     f.close()
-    F_score(ans_path, file_path)
+    if not os.path.isfile(dir_path+"/test.txt"):
+        return
+    F_score(ans_path, dir_path+"/test.txt")
 
 def result():
     global F_COn 
@@ -147,14 +149,14 @@ if __name__ == '__main__':
     """ Configs """
     TailSec = 1
     s_bias = 0.05
-    e_bias = 0.016
+    e_bias = 0.01
     F_COn = [0, 0, 0]
     F_COnP = [0, 0, 0]
     F_COnPOff = [0, 0, 0]
     continuous_fac = 0.1
     continuous_part = 4
     """ Configs """
-    for i in range(1, 501):
+    for i in range(1, 500):
         path = f'../{i}'
         predict(path, i)
     result()
