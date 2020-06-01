@@ -162,14 +162,14 @@ if __name__ == '__main__':
     TailSec = 1
     s_bias = 0.05
     e_bias = 0.016
-    continuous_fac = 0.1
+    continuous_fac = 0.05
     continuous_part = 4
     """ Configs """
     for i in range(1, 501):
         path = f'../train/{i}/'
         predict(path, i)
-    F_score("output.txt", "ori")
-    F_score("test.txt", "sample")
+    #F_score("output.txt", "ori")
+    #F_score("test.txt", "sample")
     F_score("combine.txt", "combine")
 
 
