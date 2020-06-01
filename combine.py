@@ -1,10 +1,12 @@
 def combine(ori_path, onset_path, result):
     ori = open(ori_path, 'r')
+    res = open(result, 'w')
     try:
         onset = open(onset_path, 'r')
     except:
+        for line in ori:
+            res.write(line)
         return
-    res = open(result, 'w')
     ori_list = []
     for line in ori:
         ori_list.append(list(map(float,line.split(" ")[:3])))
@@ -36,10 +38,10 @@ def combine(ori_path, onset_path, result):
 if __name__ == '__main__':
     eta = 0.2
     for i in range(1, 501):
-        path = f'../{i}'
-        ori_path = f"../{i}/output.txt"
-        onset_path = f"../{i}/onset.txt"
-        result = f"../{i}/combine.txt"
+        path = f'../train/{i}'
+        ori_path = f"../train/{i}/output.txt"
+        onset_path = f"../train/{i}/onset.txt"
+        result = f"../train/{i}/combine.txt"
         combine(ori_path, onset_path, result)
 
 
