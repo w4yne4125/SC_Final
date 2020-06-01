@@ -175,7 +175,7 @@ def F_score(dst_file, name):
                     A = 1
                     if int(x[2]) == int(y[2]):
                         B = 1
-                        offset = max(0.5, 0.2 * (y[1]-y[0]))
+                        offset = max(0.05, 0.2 * (y[1]-y[0]))
                         if abs(x[1] - y[1]) <= offset:
                             C = 1 
             if A:
@@ -184,7 +184,7 @@ def F_score(dst_file, name):
                 F_COnP[2] += 1
             if C:
                 F_COnPOff[2] += 1
-            log.write(f"{x[0]:3.2f} {x[1]:3.2f} {x[2]:3.2f}  |  {A} {B} {C}\n")
+            log.write(f"{x[0]:3.2f} {x[1]:3.2f} {x[2]:3.2f} {A} {B} {C}\n")
 
     score1 = 2 * F_COn[2] / (F_COn[0] + F_COn[1])
     score2 = 2 * F_COnP[2] / (F_COnP[0] + F_COnP[1])
@@ -229,12 +229,14 @@ def combine(ori_path, onset_path, result):
         if (ori_list[i][1] < ori_list[i][0]  or ori_list[i+1][0] < ori_list[i][1] ):
             print("Error")
     for x in ori_list:
-        res.write(f"{x[0]} {x[1]} {x[2]}\n")
+        if x[1]-x[0] > refine_eta[1] or x[1]-x[0] < refine_eta[0]:
+            res.write(f"{x[0]} {x[1]} {x[2]}\n")
 
 
 if __name__ == '__main__':
     """ Configs """
     eta = 0.3
+    refine_eta = [0.01, 0.13]
     TailSec = 1
     s_bias = 0.05
     e_bias = 0.016
