@@ -8,7 +8,7 @@ def decide_base(seg_list):
     acc = np.zeros(500)
     for x in seg_list:
         acc[len(x)] += 1
-    return min(np.argmax(acc), 10) # 有些歌並無明顯斷點
+    return min(max(np.argmax(acc), 5), 10) - 2 # 有些歌並無明顯斷點
 
 def isTail(idx, seg_list):
     """
@@ -87,6 +87,22 @@ def predict(dir_path, idx):
     json_path = dir_path + "/Vocal.json"
     with open(json_path, 'r') as json_file:
         temp = json.loads(json_file.read())
+    """ zeros_connections """
+    prev = 1
+    while prev < len(temp):
+        if not temp[prev][1]:
+            for j in range(prev+1, prev+zeros_connection):
+                if j == len(temp):
+                    break
+                if temp[j][1]: # 把0補齊from i to j-1
+                    for k in range(prev, j):
+                        temp[k][1] = temp[k-1][1]
+            # 跳到下一個1
+            while prev < len(temp) and temp[prev][1] == 0:
+                prev += 1
+        else:
+            prev += 1
+
     seg_list = []
     seg = []
     prev = 0
@@ -98,6 +114,8 @@ def predict(dir_path, idx):
             seg_list.append(seg)
             seg = []
             prev = 0
+    if len(seg):
+        seg_list.append(seg)
     base_length = decide_base(seg_list)
     file_path = dir_path + "/output.txt"
     ans_path = dir_path + f"/{idx}.txt"
@@ -153,11 +171,11 @@ def F_score(dst_file, name):
     score1 = 2 * F_COn[2] / (F_COn[0] + F_COn[1])
     score2 = 2 * F_COnP[2] / (F_COnP[0] + F_COnP[1])
     score3 = 2 * F_COnPOff[2] / (F_COnPOff[0] + F_COnPOff[1])
-    print(f"On test {name}\n")
-    print(f"F_COn : {F_COn[0]} {F_COn[1]} {F_COn[2]} {score1}\n")
-    print(f"F_COnP : {F_COnP[0]} {F_COnP[1]} {F_COnP[2]} {score2}\n")
-    print(f"F_COnPOff : {F_COnPOff[0]} {F_COnPOff[1]} {F_COnPOff[2]} {score3}\n")
-    print(f"Overall : {0.2 * score1 + 0.6 * score2 + 0.2 * score3}\n")
+    print(f"On test {name}")
+    print(f"F_COn : {F_COn[0]} {F_COn[1]} {F_COn[2]} {score1}")
+    print(f"F_COnP : {F_COnP[0]} {F_COnP[1]} {F_COnP[2]} {score2}")
+    print(f"F_COnPOff : {F_COnPOff[0]} {F_COnPOff[1]} {F_COnPOff[2]} {score3}")
+    print(f"Overall : {0.2 * score1 + 0.6 * score2 + 0.2 * score3}")
 
 def combine(ori_path, onset_path, result):
     ori = open(ori_path, 'r')
@@ -204,7 +222,8 @@ if __name__ == '__main__':
     e_bias = 0.016
     continuous_fac = 0.05
     continuous_part = 4
-    min_seg_len = 0
+    min_seg_len = 0      # 每一個音符最少要有幾個0.032 frame
+    zeros_connection = 2 # 少於多少0的話，就把他連起來
     """ Configs """
     for i in range(1, 501):
         path = f'../train/{i}/'
