@@ -99,7 +99,7 @@ def predict_seg(idx, seg_list, base_length, f):
            f.write(f"{target[prev][0] - s_bias} {target[len(target)-1][0] + e_bias} {note}\n")
 
 
-def predict(dir_path, idx):
+def predict(dir_path):
     """
     先以pitch = 0作基本分段
     """
@@ -137,12 +137,56 @@ def predict(dir_path, idx):
         seg_list.append(seg)
     base_length = decide_base(seg_list)
     file_path = dir_path + "/output.txt"
-    ans_path = dir_path + f"/{idx}.txt"
     f = open(file_path, 'w')
-    
     for i in range(len(seg_list)):
         predict_seg(i, seg_list, base_length, f)
+    f.close()
 
+def onset_based(dir_path):
+    """
+    以sample code 的onset分割
+    """
+    json_path = dir_path + "/Vocal.json"
+    with open(json_path, 'r') as json_file:
+        temp = json.loads(json_file.read())
+    seg_list = []
+    seg = []
+    onset_path = dir_path + "/onset.txt"
+    onset_list = []
+    try:
+        f = open(onset_path, 'r')
+    except:
+        return
+    for line in f:
+        onset_list.append(float(line))
+    idx_mp = []
+    for start in onset_list:
+        for x in range(len(temp)):
+            if (abs(start - temp[x][0]) <= 0.017): # Closest
+                idx_mp.append(x)
+                break
+    idx_mp.append(len(temp)-1)
+    print(len(onset_list), len(idx_mp))
+    for idx, start in enumerate(onset_list):
+        if idx+1 >= len(idx_mp):
+            break
+        left = idx_mp[idx]
+        right = idx_mp[idx+1]
+        while (left <= right):
+            if temp[left][1]:
+                seg.append(temp[left])
+            else:
+                if len(seg):
+                    seg_list.append(seg)
+                    seg = []
+            left += 1
+    if len(seg):
+        seg_list.append(seg)
+    base_length = decide_base(seg_list)
+    file_path = dir_path + "/onset_based.txt"
+    f = open(file_path, 'w')
+    for i in range(len(seg_list)):
+        predict_seg(i, seg_list, base_length, f)
     f.close()
 
 
@@ -238,10 +282,10 @@ def combine(ori_path, onset_path, result):
 
 if __name__ == '__main__':
     """ Configs """
-    eta = 0.3
+    eta = 0.2
     refine_eta = [0.01, 0.13]
     TailSec = 1
-    s_bias = 0.05
+    s_bias = 0.03
     e_bias = 0.016
     continuous_fac = 0.05
     continuous_part = 3
@@ -251,14 +295,16 @@ if __name__ == '__main__':
     """ Configs """
     for i in range(1, 501):
         path = f'../train/{i}/'
-        predict(path, i)
+        predict(path)
+        #onset_based(path)
         ori_path = f"../train/{i}/output.txt"
         onset_path = f"../train/{i}/onset.txt"
         result = f"../train/{i}/combine.txt"
         combine(ori_path, onset_path, result)
     F_score("output.txt", "ori")
-    #F_score("test.txt", "sample")
+    F_score("test.txt", "sample")
     F_score("combine.txt", "combine")
+    #F_score("onset_based.txt", "onset")
 
 
 
