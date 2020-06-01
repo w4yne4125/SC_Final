@@ -1,3 +1,4 @@
+import math
 import os, json
 import numpy as np
 
@@ -8,7 +9,7 @@ def decide_base(seg_list):
     acc = np.zeros(500)
     for x in seg_list:
         acc[len(x)] += 1
-    return min(max(np.argmax(acc), 8), 12) - 2 # 有些歌並無明顯斷點
+    return min(max(np.argmax(acc), 8), 10) - 1 # 有些歌並無明顯斷點
 
 def isTail(idx, seg_list):
     """
@@ -53,9 +54,10 @@ def predict_seg(idx, seg_list, base_length, f):
         if not written: 
             cnt = 0
             acc = 0
-            for i in range(len(target) // 2, max(3 * len(target) // 4, len(target)//2+1)):
-                cnt += 1
-                acc += target[i][1]
+            for i in range(len(target) // 2, len(target)):
+                weight = math.sqrt(len(target) - i)
+                cnt += weight
+                acc += target[i][1] * weight
             note = round(acc / cnt)
             f.write(f"{target[0][0] - s_bias} {target[-1][0] + e_bias} {note}\n")
     else:
@@ -90,8 +92,9 @@ def predict_seg(idx, seg_list, base_length, f):
                cnt = 0
                acc = 0
                for i in range((prev + len(target)) // 2, len(target)):
-                   cnt += 1
-                   acc += target[i][1]
+                   weight = math.sqrt(len(target) - i)
+                   cnt += weight
+                   acc += target[i][1] * weight
                note = round(acc / cnt)
            f.write(f"{target[prev][0] - s_bias} {target[len(target)-1][0] + e_bias} {note}\n")
 
