@@ -8,7 +8,7 @@ def decide_base(seg_list):
     acc = np.zeros(500)
     for x in seg_list:
         acc[len(x)] += 1
-    return min(max(np.argmax(acc), 5), 10) - 2 # 有些歌並無明顯斷點
+    return min(max(np.argmax(acc), 8), 12) - 2 # 有些歌並無明顯斷點
 
 def isTail(idx, seg_list):
     """
@@ -34,14 +34,30 @@ def predict_seg(idx, seg_list, base_length, f):
     base_len = len(seg_list[idx]) // base_count
     target = seg_list[idx]
     if base_count == 1: # basic situation
-        cnt = 0
-        acc = 0
-        for i in range(len(target) // 2, len(target)):
-            cnt += 1
-            acc += target[i][1]
-        note = round(acc / cnt)
-        f.write(f"{target[0][0] - s_bias} {target[-1][0] + e_bias} {note}\n")
-        return
+        written = 0
+        continuous = [0 for i in range(len(target))]
+        for i in range(len(target)):
+            if continuous[i]:
+               continue
+            end = i+1
+            while (end < len(target)):
+                if (abs(target[end][1] - target[end-1][1]) <= continuous_fac ):
+                    end += 1
+                else:
+                    break
+            if end - i >= continuous_part:
+                note = round(target[i][1])
+                f.write(f"{target[0][0] - s_bias} {target[-1][0] + e_bias} {note}\n")
+                written = 1
+                break
+        if not written: 
+            cnt = 0
+            acc = 0
+            for i in range(len(target) // 2, max(3 * len(target) // 4, len(target)//2+1)):
+                cnt += 1
+                acc += target[i][1]
+            note = round(acc / cnt)
+            f.write(f"{target[0][0] - s_bias} {target[-1][0] + e_bias} {note}\n")
     else:
        continuous = [0 for i in range(len(target))]
        for i in range(len(target)):
@@ -137,6 +153,7 @@ def F_score(dst_file, name):
             dst = open(f"../train/{i}/{dst_file}", 'r')
         except:
             continue
+        log = open(f"../train/{i}/{dst_file}_log", "w")
         src_list = []
         dst_list = []
         for line in src:
@@ -150,23 +167,24 @@ def F_score(dst_file, name):
         F_COnPOff[0] += len(src_list)
         F_COnPOff[1] += len(dst_list)
         for x in dst_list:
+            A = 0
+            B = 0
+            C = 0
             for y in src_list:
                 if abs(x[0] - y[0]) <= 0.05:
-                    F_COn[2] += 1
-                    break
-        for x in dst_list:
-            for y in src_list:
-                if abs(x[0] - y[0]) <= 0.05 and int(x[2]) == int(y[2]):
-                    F_COnP[2] += 1
-                    break
-        for x in dst_list:
-            for y in src_list:
-                if abs(x[0] - y[0]) <= 0.05:
-                    length = y[1] - y[0]
-                    offset = max(0.5, 0.2 * length)
-                    if (int(x[2]) == int(y[2]) and abs(x[1] - y[1]) <= offset):
-                        F_COnPOff[2] += 1
-                        break
+                    A = 1
+                    if int(x[2]) == int(y[2]):
+                        B = 1
+                        offset = max(0.5, 0.2 * (y[1]-y[0]))
+                        if abs(x[1] - y[1]) <= offset:
+                            C = 1 
+            if A:
+                F_COn[2] += 1
+            if B:
+                F_COnP[2] += 1
+            if C:
+                F_COnPOff[2] += 1
+            log.write(f"{x[0]:3.2f} {x[1]:3.2f} {x[2]:3.2f}  |  {A} {B} {C}\n")
 
     score1 = 2 * F_COn[2] / (F_COn[0] + F_COn[1])
     score2 = 2 * F_COnP[2] / (F_COnP[0] + F_COnP[1])
@@ -221,9 +239,10 @@ if __name__ == '__main__':
     s_bias = 0.05
     e_bias = 0.016
     continuous_fac = 0.05
-    continuous_part = 4
+    continuous_part = 3
     min_seg_len = 0      # 每一個音符最少要有幾個0.032 frame
     zeros_connection = 2 # 少於多少0的話，就把他連起來
+    log = True # 是否紀錄對錯
     """ Configs """
     for i in range(1, 501):
         path = f'../train/{i}/'
