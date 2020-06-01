@@ -59,6 +59,8 @@ def predict_seg(idx, seg_list, base_length, f):
        prev = 0
        for i in range(1, len(target)):
            if (continuous[i] - continuous[i-1] == -1): # breakpoint
+               if (i - prev < min_seg_len):
+                   continue
                note = round(target[i-1][1])
                f.write(f"{target[prev][0] - s_bias} {target[i-1][0] + e_bias} {note}\n")
                prev = i
@@ -157,20 +159,64 @@ def F_score(dst_file, name):
     print(f"F_COnPOff : {F_COnPOff[0]} {F_COnPOff[1]} {F_COnPOff[2]} {score3}\n")
     print(f"Overall : {0.2 * score1 + 0.6 * score2 + 0.2 * score3}\n")
 
+def combine(ori_path, onset_path, result):
+    ori = open(ori_path, 'r')
+    res = open(result, 'w')
+    try:
+        onset = open(onset_path, 'r')
+    except:
+        for line in ori:
+            res.write(line)
+        return
+    ori_list = []
+    for line in ori:
+        ori_list.append(list(map(float,line.split(" ")[:3])))
+    onset_list = []
+    for line in onset:
+        onset_list.append(float(line))
+    prev = 0
+    for i in range(len(ori_list)):
+        Min = 10000
+        ans = -1
+        rec = -1
+        for idx in range(prev, len(onset_list)):
+            x = onset_list[idx]
+            if abs(x - ori_list[i][0]) < Min:
+                Min = abs(x - ori_list[i][0])
+                ans = x
+                rec = idx
+        if Min < eta and ans < ori_list[i][1]:
+            ori_list[i][0] = ans
+            prev = rec
+    for i in range(len(ori_list)-1):
+        ori_list[i][1] = min(ori_list[i][1], ori_list[i+1][0])
+        if (ori_list[i][1] < ori_list[i][0]  or ori_list[i+1][0] < ori_list[i][1] ):
+            print("Error")
+    for x in ori_list:
+        res.write(f"{x[0]} {x[1]} {x[2]}\n")
+
+
 if __name__ == '__main__':
     """ Configs """
+    eta = 0.3
     TailSec = 1
     s_bias = 0.05
     e_bias = 0.016
     continuous_fac = 0.05
     continuous_part = 4
+    min_seg_len = 0
     """ Configs """
     for i in range(1, 501):
         path = f'../train/{i}/'
         predict(path, i)
-    #F_score("output.txt", "ori")
+        ori_path = f"../train/{i}/output.txt"
+        onset_path = f"../train/{i}/onset.txt"
+        result = f"../train/{i}/combine.txt"
+        combine(ori_path, onset_path, result)
+    F_score("output.txt", "ori")
     #F_score("test.txt", "sample")
     F_score("combine.txt", "combine")
+
 
 
 
