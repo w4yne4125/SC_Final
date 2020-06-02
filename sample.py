@@ -38,9 +38,7 @@ def get_onset(wav_path):
                                       hop_length= h_length,
                                       units='time', pre_max= 5, post_max= 5, 
                                       pre_avg= 5, post_avg= 5)
-    for x in onset_times:
 
-        print(x)
     return onset_times
 
 
@@ -126,11 +124,11 @@ def main(wav_path, ep_path, output_path):
     print ("end processing time: %f" %(time.time()))
 
 if __name__ == '__main__':
-    for i in range(1, 2):
-        wav_path= f"../{i}/{i}.wav"
+    for i in range(1, 1501):
+        wav_path= f"../test/{i}/{i}.wav"
         if not os.path.isfile(wav_path):
             continue
-        ep_path= f"../{i}/Vocal.json"
-        output_path= f"../{i}/test.txt"
-        onset_path= f"../{i}/onset.txt"
+        ep_path= f"../test/{i}/{i}_vocal.json"
+        output_path= f"../test/{i}/test.txt"
+        onset_path= f"../test/{i}/onset.txt"
         main(wav_path=wav_path, ep_path=ep_path, output_path=output_path)

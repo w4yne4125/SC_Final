@@ -47,7 +47,7 @@ def predict_seg(idx, seg_list, base_length, f):
                 else:
                     break
             if end - i >= continuous_part:
-                note = round(target[i][1])
+                note = target[i][1]
                 f.write(f"{target[0][0] - s_bias} {target[-1][0] + e_bias} {note}\n")
                 written = 1
                 break
@@ -58,7 +58,7 @@ def predict_seg(idx, seg_list, base_length, f):
                 weight = math.sqrt(len(target) - i)
                 cnt += weight
                 acc += target[i][1] * weight
-            note = round(acc / cnt)
+            note = acc / cnt
             f.write(f"{target[0][0] - s_bias} {target[-1][0] + e_bias} {note}\n")
     else:
        continuous = [0 for i in range(len(target))]
@@ -79,7 +79,7 @@ def predict_seg(idx, seg_list, base_length, f):
            if (continuous[i] - continuous[i-1] == -1): # breakpoint
                if (i - prev < min_seg_len):
                    continue
-               note = round(target[i-1][1])
+               note = target[i-1][1]
                f.write(f"{target[prev][0] - s_bias} {target[i-1][0] + e_bias} {note}\n")
                prev = i
        if prev != len(target) - 1:
@@ -95,7 +95,7 @@ def predict_seg(idx, seg_list, base_length, f):
                    weight = math.sqrt(len(target) - i)
                    cnt += weight
                    acc += target[i][1] * weight
-               note = round(acc / cnt)
+               note = acc / cnt
            f.write(f"{target[prev][0] - s_bias} {target[len(target)-1][0] + e_bias} {note}\n")
 
 
@@ -158,7 +158,7 @@ def F_score(dst_file, name):
         for line in src:
             src_list.append(list(map(float, line.split(" ")[:3])))
         for line in dst:
-            dst_list.append(list(map(float, line.split(" ")[:3])))
+            dst_list.append(list(map(float, line.split(" ")[:4])))
         F_COn[0] += len(src_list)
         F_COn[1] += len(dst_list)
         F_COnP[0] += len(src_list)
@@ -172,7 +172,7 @@ def F_score(dst_file, name):
             for y in src_list:
                 if abs(x[0] - y[0]) <= 0.05:
                     A = 1
-                    if int(x[2]) == int(y[2]):
+                    if round(x[2]) == round(y[2]):
                         B = 1
                         offset = max(0.05, 0.2 * (y[1]-y[0]))
                         if abs(x[1] - y[1]) <= offset:
@@ -232,16 +232,31 @@ def combine(ori_path, onset_path, result):
             res.write(f"{x[0]} {x[1]} {x[2]}\n")
 
 
+def txt2json():
+    dic = {}
+    for i in range(1, 1501):
+        path = f"../test/{i}/combine.txt"
+        ans_list = []
+        with open(path, 'r') as f:
+            for line in f:
+                ls = (list(map(float, line.split(" "))))
+                ls[2] = round(ls[2])
+                ans_list.append(ls)
+        dic[f"{i}"] = ans_list
+    with open('../test/answer.json', 'w') as fp:
+        json.dump(dic, fp, indent=4)
+
+
 if __name__ == '__main__':
     """ Configs """
-    Type = 'train'
-    eta = 0.2
-    refine_eta = [0.01, 0.13]
+    Type = 'test'
+    eta = 0.1
+    refine_eta = [0.01, 0.1]
     TailSec = 1
-    s_bias = 0.03
-    e_bias = 0.016
-    combine_bias = 0.03
-    continuous_fac = 0.05
+    s_bias = 0.00
+    e_bias = 0.00
+    combine_bias = 0.00
+    continuous_fac = 0.01
     continuous_part = 3
     min_seg_len = 0      # 每一個音符最少要有幾個0.032 frame
     zeros_connection = 2 # 少於多少0的話，就把他連起來
@@ -269,6 +284,7 @@ if __name__ == '__main__':
             onset_path = f"../{Type}/{i}/onset.txt"
             result = f"../{Type}/{i}/combine.txt"
             combine(ori_path, onset_path, result)
+        txt2json()
 
 
 

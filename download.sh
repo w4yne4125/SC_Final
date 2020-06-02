@@ -1,5 +1,5 @@
-cd ../;
-for i in {41..500}
+cd ../test;
+for i in {1..1500}
 do
     cd $i
     link=`head -n 1 ./${i}_link.txt`;

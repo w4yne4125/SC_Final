@@ -49,11 +49,12 @@ def main(wav_path, ep_path, output_path):
     onset_times = get_onset(wav_path)
 
 if __name__ == '__main__':
-    for i in range(1, 501):
-        wav_path= f"../{i}/{i}.wav"
+    for i in range(1, 1501):
+        wav_path= f"../test/{i}/{i}.wav"
         if not os.path.isfile(wav_path):
             continue
-        ep_path= f"../{i}/Vocal.json"
-        output_path= f"../{i}/test.txt"
-        onset_path= f"../{i}/onset.txt"
+        print(i)
+        ep_path= f"../test/{i}/{i}_vocal.json"
+        output_path= f"../test/{i}/test.txt"
+        onset_path= f"../test/{i}/onset.txt"
         main(wav_path=wav_path, ep_path=ep_path, output_path=output_path)
