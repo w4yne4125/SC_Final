@@ -221,12 +221,12 @@ def combine(ori_path, onset_path, result):
                 ans = x
                 rec = idx
         if Min < eta and ans < ori_list[i][1]:
-            ori_list[i][0] = ans
+            ori_list[i][0] = ans - combine_bias
             prev = rec
     for i in range(len(ori_list)-1):
         ori_list[i][1] = min(ori_list[i][1], ori_list[i+1][0])
         if (ori_list[i][1] < ori_list[i][0]  or ori_list[i+1][0] < ori_list[i][1] ):
-            print("Error")
+            print("Error", ori_list[i][0], ori_list[i][1], ori_list[i+1][0])
     for x in ori_list:
         if x[1]-x[0] > refine_eta[1] or x[1]-x[0] < refine_eta[0]:
             res.write(f"{x[0]} {x[1]} {x[2]}\n")
@@ -240,6 +240,7 @@ if __name__ == '__main__':
     TailSec = 1
     s_bias = 0.03
     e_bias = 0.016
+    combine_bias = 0.03
     continuous_fac = 0.05
     continuous_part = 3
     min_seg_len = 0      # 每一個音符最少要有幾個0.032 frame
