@@ -114,7 +114,6 @@ def main(wav_path, ep_path, output_path):
     ep_frames = json.load(open(ep_path))
 
     onset_times = get_onset(wav_path)
-    return
     notes = generate_notes(onset_times, ep_frames)
     notes = get_note_level_pitch(notes)
     notes = get_offset(notes)

@@ -231,37 +231,121 @@ def combine(ori_path, onset_path, result):
         if x[1]-x[0] > refine_eta[1] or x[1]-x[0] < refine_eta[0]:
             res.write(f"{x[0]} {x[1]} {x[2]}\n")
 
+def refine(ori_path, result):
+    ori = open(ori_path, 'r')
+    res = open(result, 'w')
+    ori_list = []
+    for line in ori:
+        ori_list.append(list(map(float,line.split(" ")[:3])))
+
+    """ find isolate notes """
+    for i in range(len(ori_list)):
+        x = ori_list[i]
+        if i == 0:
+            right = ori_list[i+1][0] - ori_list[i][1]
+            if right <= isolate_eta:
+                res.write(f"{x[0]} {x[1]} {x[2]}\n")
+        elif i == len(ori_list)-1:
+            left = ori_list[i][0] - ori_list[i-1][1]
+            if left <= isolate_eta:
+                res.write(f"{x[0]} {x[1]} {x[2]}\n")
+        else:
+            left = ori_list[i][0] - ori_list[i-1][1]
+            right = ori_list[i+1][0] - ori_list[i][1]
+            if left <= isolate_eta or right <= isolate_eta:
+                res.write(f"{x[0]} {x[1]} {x[2]}\n")
+
+def onset_based(dir_path, idx):
+     """
+     以sample code 的onset分割
+     """
+     json_path = dir_path + f"/{idx}_vocal.json"
+     with open(json_path, 'r') as json_file:
+         temp = json.loads(json_file.read())
+     seg_list = []
+     seg = []
+     onset_path = dir_path + "/onset.txt"
+     onset_list = []
+     try:
+         f = open(onset_path, 'r')
+     except:
+         file_path = dir_path + "/onset_based.txt"
+         res = open(file_path, 'w')
+         with open(dir_path + "/combine.txt", 'r') as f:
+             for line in f:
+                 res.write(line)
+         return
+     for line in f:
+         onset_list.append(float(line))
+     idx_mp = []
+     for start in onset_list:
+         for x in range(len(temp)):
+             if (abs(start - temp[x][0]) <= 0.017): # Closest
+                 idx_mp.append(x)
+                 break
+     idx_mp.append(len(temp)-1)
+     print(len(onset_list), len(idx_mp))
+     for idx, start in enumerate(onset_list):
+         if idx+1 >= len(idx_mp):
+             break
+         left = idx_mp[idx]
+         right = idx_mp[idx+1]
+         while (left <= right):
+             if temp[left][1]:
+                 seg.append(temp[left])
+             else:
+                 if len(seg):
+                     seg_list.append(seg)
+                     seg = []
+             left += 1
+     if len(seg):
+         seg_list.append(seg)
+     base_length = decide_base(seg_list)
+     file_path = dir_path + "/onset_based.txt"
+     f = open(file_path, 'w')
+     for i in range(len(seg_list)):
+         predict_seg(i, seg_list, base_length, f)
+     f.close()
 
 def txt2json():
     dic = {}
     for i in range(1, 1501):
-        path = f"../test/{i}/combine.txt"
+        path = f"../test/{i}/test.txt"
         ans_list = []
-        with open(path, 'r') as f:
-            for line in f:
-                ls = (list(map(float, line.split(" "))))
-                ls[2] = round(ls[2])
-                ans_list.append(ls)
+        try:
+            f = open(path, 'r')
+        except:
+            f = open(f"../test/{i}/refine.txt")
+        for line in f:
+            ls = (list(map(float, line.split(" "))))
+            ls[0] = round(ls[0], 4)
+            ls[1] = round(ls[1], 4)
+            ls[2] = round(ls[2])
+            ans_list.append(ls)
         dic[f"{i}"] = ans_list
-    with open('../test/answer.json', 'w') as fp:
-        json.dump(dic, fp, indent=4)
+    with open("../test/answer.json", 'w') as f:
+        output_string = json.dumps(dic)
+        f.write(output_string)
 
 
 if __name__ == '__main__':
     """ Configs """
-    Type = 'test'
-    eta = 0.1
-    refine_eta = [0.01, 0.1]
+    Type = 'none'
+    eta = 0.2
+    refine_eta = [0.01, 0.13]
     TailSec = 1
-    s_bias = 0.00
-    e_bias = 0.00
-    combine_bias = 0.00
-    continuous_fac = 0.01
+    s_bias = 0.03
+    e_bias = 0.016
+    combine_bias = 0.02
+    continuous_fac = 0.1
     continuous_part = 3
     min_seg_len = 0      # 每一個音符最少要有幾個0.032 frame
     zeros_connection = 2 # 少於多少0的話，就把他連起來
+    isolate_eta = 4
     log = True # 是否紀錄對錯
     """ Configs """
+
+    F_score("ml.txt", "ml")
 
     if Type == 'train':
         for i in range(1, 501):
@@ -270,10 +354,13 @@ if __name__ == '__main__':
             ori_path = f"../train/{i}/output.txt"
             onset_path = f"../train/{i}/onset.txt"
             result = f"../train/{i}/combine.txt"
+            refine_path = f"../train/{i}/refine.txt"
             combine(ori_path, onset_path, result)
+            refine(result, refine_path)
         F_score("output.txt", "ori")
-        F_score("test.txt", "sample")
+        #F_score("test.txt", "sample")
         F_score("combine.txt", "combine")
+        F_score("refine.txt", "refine")
 
 
     if Type == 'test':
@@ -283,8 +370,11 @@ if __name__ == '__main__':
             ori_path = f"../{Type}/{i}/output.txt"
             onset_path = f"../{Type}/{i}/onset.txt"
             result = f"../{Type}/{i}/combine.txt"
+            refine_path = f"../{Type}/{i}/refine.txt"
+            #onset_based(path, i)
             combine(ori_path, onset_path, result)
-        txt2json()
+            refine(f"../test/{i}/onset_based.txt", refine_path)
+    txt2json()
 
 
 
