@@ -9,18 +9,7 @@ def decide_base(seg_list):
     acc = np.zeros(1000)
     for x in seg_list:
         acc[len(x)] += 1
-    return min(max(np.argmax(acc), 8), 10) - 1 # 有些歌並無明顯斷點
-
-def isTail(idx, seg_list):
-    """
-    是否為唱句尾端 (尚未投入應用)
-    """
-    if (idx == len(seg_list) - 1):
-        return 1
-    if (seg_list[idx+1][0][0] - seg_list[idx][-1][0] >= TailSec):
-        return 1
-    return 0
-
+    return min(max(np.argmax(acc), 8), 12) # 有些歌並無明顯斷點
 
 def predict_seg(idx, seg_list, base_length, f):
     """
@@ -76,7 +65,7 @@ def predict_seg(idx, seg_list, base_length, f):
                    continuous[j] = 1
        prev = 0
        for i in range(1, len(target)):
-           if (continuous[i] - continuous[i-1] == -1): # breakpoint
+           if (continuous[i] - continuous[i-1] == -1) or i - prev >= max_len: # breakpoint
                if (i - prev < min_seg_len):
                    continue
                note = target[i-1][1]
@@ -223,11 +212,9 @@ def combine(ori_path, onset_path, result):
         if Min < eta and ans < ori_list[i][1]:
             ori_list[i][0] = ans - combine_bias
             prev = rec
-    for i in range(len(ori_list)-1):
-        ori_list[i][1] = min(ori_list[i][1], ori_list[i+1][0])
-        if (ori_list[i][1] < ori_list[i][0]  or ori_list[i+1][0] < ori_list[i][1] ):
-            print("Error", ori_list[i][0], ori_list[i][1], ori_list[i+1][0])
     for x in ori_list:
+        if x[0] < 2:
+            continue
         if x[1]-x[0] > refine_eta[1] or x[1]-x[0] < refine_eta[0]:
             res.write(f"{x[0]} {x[1]} {x[2]}\n")
 
@@ -237,6 +224,13 @@ def refine(ori_path, result):
     ori_list = []
     for line in ori:
         ori_list.append(list(map(float,line.split(" ")[:3])))
+
+    ori_list[0][0] = min(ori_list[0][1], ori_list[0][0])
+    for i in range(1, len(ori_list)):
+        ori_list[i][0] = max(ori_list[i-1][1], ori_list[i][0]) 
+        ori_list[i][1] = max(ori_list[i][1], ori_list[i][0]) 
+        if (ori_list[i][1] < ori_list[i][0]  or ori_list[i][0] < ori_list[i-1][1] ):
+            print("Error", ori_list[i][0], ori_list[i][1], ori_list[i+1][0])
 
     """ find isolate notes """
     for i in range(len(ori_list)):
@@ -255,62 +249,10 @@ def refine(ori_path, result):
             if left <= isolate_eta or right <= isolate_eta:
                 res.write(f"{x[0]} {x[1]} {x[2]}\n")
 
-def onset_based(dir_path, idx):
-     """
-     以sample code 的onset分割
-     """
-     json_path = dir_path + f"/{idx}_vocal.json"
-     with open(json_path, 'r') as json_file:
-         temp = json.loads(json_file.read())
-     seg_list = []
-     seg = []
-     onset_path = dir_path + "/onset.txt"
-     onset_list = []
-     try:
-         f = open(onset_path, 'r')
-     except:
-         file_path = dir_path + "/onset_based.txt"
-         res = open(file_path, 'w')
-         with open(dir_path + "/combine.txt", 'r') as f:
-             for line in f:
-                 res.write(line)
-         return
-     for line in f:
-         onset_list.append(float(line))
-     idx_mp = []
-     for start in onset_list:
-         for x in range(len(temp)):
-             if (abs(start - temp[x][0]) <= 0.017): # Closest
-                 idx_mp.append(x)
-                 break
-     idx_mp.append(len(temp)-1)
-     print(len(onset_list), len(idx_mp))
-     for idx, start in enumerate(onset_list):
-         if idx+1 >= len(idx_mp):
-             break
-         left = idx_mp[idx]
-         right = idx_mp[idx+1]
-         while (left <= right):
-             if temp[left][1]:
-                 seg.append(temp[left])
-             else:
-                 if len(seg):
-                     seg_list.append(seg)
-                     seg = []
-             left += 1
-     if len(seg):
-         seg_list.append(seg)
-     base_length = decide_base(seg_list)
-     file_path = dir_path + "/onset_based.txt"
-     f = open(file_path, 'w')
-     for i in range(len(seg_list)):
-         predict_seg(i, seg_list, base_length, f)
-     f.close()
-
 def txt2json():
     dic = {}
     for i in range(1, 1501):
-        path = f"../test/{i}/test.txt"
+        path = f"../test/{i}/refine.txt"
         ans_list = []
         try:
             f = open(path, 'r')
@@ -324,28 +266,28 @@ def txt2json():
             ans_list.append(ls)
         dic[f"{i}"] = ans_list
     with open("../test/answer.json", 'w') as f:
-        output_string = json.dumps(dic)
+        output_string = json.dumps(dic, indent=4)
         f.write(output_string)
 
 
 if __name__ == '__main__':
+
     """ Configs """
-    Type = 'none'
+    Type = 'test'
     eta = 0.2
-    refine_eta = [0.01, 0.13]
+    refine_eta = [0.01, 0.05]
     TailSec = 1
-    s_bias = 0.03
-    e_bias = 0.016
-    combine_bias = 0.02
+    s_bias = 0.01
+    max_len = 24
+    e_bias = 0.00
+    combine_bias = -0.02
     continuous_fac = 0.1
     continuous_part = 3
-    min_seg_len = 0      # 每一個音符最少要有幾個0.032 frame
+    min_seg_len = 4      # 每一個音符最少要有幾個0.032 frame
     zeros_connection = 2 # 少於多少0的話，就把他連起來
     isolate_eta = 4
     log = True # 是否紀錄對錯
     """ Configs """
-
-    F_score("ml.txt", "ml")
 
     if Type == 'train':
         for i in range(1, 501):
@@ -358,7 +300,6 @@ if __name__ == '__main__':
             combine(ori_path, onset_path, result)
             refine(result, refine_path)
         F_score("output.txt", "ori")
-        #F_score("test.txt", "sample")
         F_score("combine.txt", "combine")
         F_score("refine.txt", "refine")
 
@@ -373,8 +314,8 @@ if __name__ == '__main__':
             refine_path = f"../{Type}/{i}/refine.txt"
             #onset_based(path, i)
             combine(ori_path, onset_path, result)
-            refine(f"../test/{i}/onset_based.txt", refine_path)
-    txt2json()
+            refine(result , refine_path)
+        txt2json()
 
 
 

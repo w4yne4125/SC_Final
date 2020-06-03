@@ -4,6 +4,7 @@ temp = json.load(f)
 for x in temp:
     prev = 0
     for i in temp[x]:
-        print(i[0], prev)
+        print(x)
+        print(i[0], i[1])
         assert i[0] >= prev
         prev = i[1]

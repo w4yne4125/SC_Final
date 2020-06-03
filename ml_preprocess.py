@@ -22,7 +22,7 @@ def preprocess():
         dst_now = 0
         for item in src:
             pitch = item[1]
-            train.append(round(pitch))
+            train.append(pitch)
             while dst_now < len(dst)-1 and now > dst[dst_now][1]:
                 dst_now += 1
             if now < dst[dst_now][0]:
@@ -33,15 +33,14 @@ def preprocess():
                 answer.append(0)
             now += step
     
-
         while len(train) % stride != 0 or len(train) < seg_len:
             train.append(0)
             answer.append(0)
         assert len(answer) % stride == 0
         assert len(answer) >= seg_len
         for i in range(seg_len-1, len(train), stride):
-            train_slice = train[i-(seg_len-1):i]
-            ans_slice = answer[i-(seg_len-1):i]
+            train_slice = train[i-(seg_len-1):i+1]
+            ans_slice = answer[i-(seg_len-1):i+1]
             cnt = 0
             for j in train_slice:
                 if j == 0:
@@ -55,8 +54,10 @@ def preprocess():
                 else:
                     valid_X.append(train_slice)
                     valid_Y.append(ans_slice)
-    print(len(train_X))
-    print(len(valid_X))
+    np.save('train_X', np.array(train_X, dtype=np.float))
+    np.save('train_Y', np.array(train_Y, dtype=np.float))
+    np.save('valid_X', np.array(valid_X, dtype=np.float))
+    np.save('valid_Y', np.array(valid_Y, dtype=np.float))
 
 def array2txt(answer):
     now = 0.016
@@ -85,7 +86,7 @@ def array2txt(answer):
         k += 1
         now += step
 
-if '__name__' == '__main__':
+if __name__ == '__main__':
     preprocess()
 
 
